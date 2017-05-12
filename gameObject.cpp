@@ -36,4 +36,4 @@ bool GameObject::intersects(GameObject* object)
 		return true;
 
 	return false;
-}
+} 
