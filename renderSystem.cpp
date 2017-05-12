@@ -110,4 +110,4 @@ void RenderSystem::setConsoleColor(ConsoleColor symbolColor, ConsoleColor backgr
 {
 	unsigned char consoleColor = symbolColor | (backgroundColor << 4);
 	SetConsoleTextAttribute(m_consoleHandle, consoleColor);
-}
+} 
