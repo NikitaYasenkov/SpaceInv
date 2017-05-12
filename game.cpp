@@ -5,8 +5,7 @@
 #include "level.h"
 #include "input.h"
 
-
-Game::Game()
+Game::Game() //Zeroing of all pointers
 {
 	m_isGameActive = true;
 	m_clockLastFrame = 0;
@@ -15,19 +14,21 @@ Game::Game()
 		m_objects[i] = 0;
 
 	m_shipFireCooldownTime = 0.0;
+	m_alienAmplitudeTime = 0.0;
 }
 
 void Game::setupSystem()
 {
-	srand(time(0));
+	srand(time(0)); //random number generator
 
 	m_renderSystem.initialize();
 }
 
-void Game::initialize()
+void Game::initialize() //loading level
 {
 	m_shipFireCooldownTime = 0.0;
-	
+	m_alienAmplitudeTime = 0.0;
+
 	// Load level
 	for (int r = 0; r < levelRows; r++)
 	{
@@ -38,8 +39,8 @@ void Game::initialize()
 			switch (cellSymbol)
 			{
 				// Create Ship
-				case CellSymbol_Ship:
-				{
+			case CellSymbol_Ship:
+			{
 									createObject(GameObjectType_Ship,
 										(c + 0.5),
 										r,
@@ -47,8 +48,22 @@ void Game::initialize()
 										GetRenderCellSymbolColor(cellSymbol),
 										GetRenderCellSymbolBackgroundColor(cellSymbol));
 									break;
-				}
+			}
 
+				// Create Alien
+			case CellSymbol_Alien:
+			{
+									 GameObject* alien = createObject(GameObjectType_Alien,
+										 (c + 0.5),
+										 r,
+										 GetRenderCellSymbol(cellSymbol),
+										 GetRenderCellSymbolColor(cellSymbol),
+										 GetRenderCellSymbolBackgroundColor(cellSymbol));
+
+									 alien->setXSpeed(alienAmplitude * cos(m_alienAmplitudeTime));
+									 alien->setYSpeed(alienSpeed);
+									 break;
+			}
 			}
 
 		}
@@ -57,7 +72,7 @@ void Game::initialize()
 
 bool Game::frame()
 {
-	// Calculate delta time
+	// Calculate delta time (Number of changes over time)
 	clock_t clockNow = clock();
 	clock_t deltaClock = clockNow - m_clockLastFrame;
 	float deltaTime = float(deltaClock) / CLOCKS_PER_SEC;
@@ -69,7 +84,7 @@ bool Game::frame()
 	return m_isGameActive;
 }
 
-void Game::shutdown()
+void Game::shutdown() //delete objects 
 {
 	for (int i = 0; i < gameObjectsCountMax; i++)
 	if (m_objects[i] != 0)
@@ -79,7 +94,7 @@ void Game::shutdown()
 	}
 }
 
-void Game::render()
+void Game::render() //render and output
 {
 	// Start frame
 	m_renderSystem.clear();
@@ -99,6 +114,7 @@ void Game::render()
 
 void Game::update(float dt)
 {
+	bool haveAliveAliens = false;
 
 	// Update all game objects
 	for (int i = 0; i < gameObjectsCountMax; i++)
@@ -112,8 +128,8 @@ void Game::update(float dt)
 			switch (object->getType())
 			{
 				// Hero ship
-				case GameObjectType_Ship:
-				{
+			case GameObjectType_Ship:
+			{
 										// Borders
 										if (object->getX() < 0)
 											object->setX(0);
@@ -149,9 +165,51 @@ void Game::update(float dt)
 												}
 											}
 										}
-				}
+			}
 
+				// Bullet
+			case GameObjectType_Bullet:
+			{
+										  if (object->getY() < 0)
+										  {
+											  destroyObject(object);
+										  }
+										  else
+										  {
+											  for (int e = 0; e < gameObjectsCountMax; e++)
+											  {
+												  GameObject* anotherObject = m_objects[e];
 
+												  if (anotherObject != 0)
+												  {
+													  if (anotherObject->getType() == GameObjectType_Alien)
+													  {
+														  if (anotherObject->intersects(object))
+														  {
+															  destroyObject(anotherObject);
+															  destroyObject(object);
+															  break;
+														  }
+													  }
+												  }
+											  }
+										  }
+
+										  break;
+			}
+
+				// Alien ship
+			case GameObjectType_Alien:
+			{
+										 haveAliveAliens = true;
+
+										 if (object->getY() >= screenRows)
+											 m_isGameActive = false;
+										 else
+											 object->setXSpeed(alienAmplitude * cos(m_alienAmplitudeTime));
+
+										 break;
+			}
 			}
 		}
 	}
@@ -160,6 +218,12 @@ void Game::update(float dt)
 	if (m_shipFireCooldownTime > 0.0)
 		m_shipFireCooldownTime -= dt;
 
+	// Alien amplitude time
+	m_alienAmplitudeTime += dt;
+
+	// Victory
+	if (!haveAliveAliens)
+		m_isGameActive = false;
 }
 
 GameObject* Game::createObject(GameObjectType type, float x, float y, char symbol, ConsoleColor color, ConsoleColor bgColor)
@@ -184,4 +248,17 @@ GameObject* Game::createObject(GameObjectType type, float x, float y, char symbo
 	}
 
 	return 0;
+}
+
+void Game::destroyObject(GameObject* object)
+{
+	for (int i = 0; i < gameObjectsCountMax; i++)
+	{
+		if (m_objects[i] == object)
+		{
+			delete m_objects[i];
+			m_objects[i] = 0;
+			return;
+		}
+	}
 }
