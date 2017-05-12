@@ -37,4 +37,4 @@ private:
 	HANDLE m_consoleHandle;
 	ConsoleSymbolData m_backBuffer[screenRows][screenColumns];
 	ConsoleSymbolData m_screenBuffer[screenRows][screenColumns];
-};
+}; 
